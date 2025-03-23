@@ -9,17 +9,17 @@
 ```
 modular-tetris/
 ├── README.md
-├── repos/
-│   ├── tetris-blocks-data/
-│   ├── tetris-board-engine/
-│   ├── tetris-move-controller/
-│   ├── tetris-scoring-rules/
-│   ├── tetris-game-state/
-│   ├── tetris-ui-headless/
-│   ├── tetris-play-loop/
-│   ├── tetris-ui-buttons/
-│   ├── tetris-event-bus/
-│   └── tetris-plugin-agent/
+├── tetris-blocks-data/
+├── tetris-board-engine/
+├── tetris-move-controller/
+├── tetris-scoring-rules/
+├── tetris-game-state/
+├── tetris-ui-headless/
+├── tetris-play-loop/
+├── tetris-ui-buttons/
+├── tetris-event-bus/
+├── tetris-plugin-agent/
+├── tests/test_harness.py
 └── examples/
     └── integration-example.json
 ```
@@ -142,6 +142,13 @@ Feel free to enhance or propose new modules by creating pull requests with clear
 This section describes how an LLM or lightweight controller assembles all 10 modular Tetris repositories into a functional, tested, and playable Pygame-based version. It leverages the plugin-agent architecture to dynamically wire up components through JSON schemas, event publishing, and reactive handlers.
 
 ---
+# Best Practice Assembly: Modular Tetris via Plugin Orchestration
+
+## Overview
+
+This section describes how an LLM or lightweight controller assembles all 10 modular Tetris repositories into a functional, tested, and playable Pygame-based version. It leverages the plugin-agent architecture to dynamically wire up components through JSON schemas, event publishing, and reactive handlers.
+
+---
 
 ## Modular Assembly Process (LLM/Agent Orchestration)
 
@@ -225,6 +232,68 @@ The agent receives this, routes to `move_controller`, which emits a `move_action
 
 ---
 
+## Plugin-Based Test Harness
+
+To run the integration harness:
+
+```bash
+python tests/test_harness.py
+```
+
+This executes commands via the `tetris-plugin-agent` interface and routes them through the modular system.
+
+### Test Harness File: `tests/test_harness.py`
+
+```python
+import json
+from ~/tetris_plugin_agent.plugin_agent import PluginAgent
+from ~/tetris_event_bus.event_bus import EventBus
+
+# Dummy handler mocks (replace with real implementations for full test)
+def mock_handler(name):
+    def handler(command, params):
+        print(f"[{name}] Received command '{command}' with params {params}")
+        return json.dumps({"status": "ok", "module": name, "command": command})
+    return handler
+
+# Register core plugins
+agent = PluginAgent()
+agent.register_module("tetris-board-engine", mock_handler("board"))
+agent.register_module("tetris-move-controller", mock_handler("move"))
+agent.register_module("tetris-scoring-rules", mock_handler("score"))
+agent.register_module("tetris-game-state", mock_handler("state"))
+agent.register_module("tetris-ui-buttons", mock_handler("buttons"))
+agent.register_module("tetris-play-loop", mock_handler("loop"))
+agent.register_module("tetris-event-bus", mock_handler("bus"))
+
+# Sample command sequence
+commands = [
+    {
+        "command": "start",
+        "target_module": "tetris-ui-buttons",
+        "parameters": {"button_id": "start"}
+    },
+    {
+        "command": "move_left",
+        "target_module": "tetris-move-controller",
+        "parameters": {"piece_id": "T", "position": [4, 0], "rotation": 0}
+    },
+    {
+        "command": "rotate",
+        "target_module": "tetris-move-controller",
+        "parameters": {"piece_id": "T", "position": [3, 0], "rotation": 0}
+    }
+]
+
+# Execute commands
+for cmd in commands:
+    print("\n--- Sending Command ---")
+    result = agent.handle_command(json.dumps(cmd))
+    print("Response:", result)
+```
+
+---
+
 ## Final Result
 This orchestrated setup enables:
 - Fully playable Tetris via headless UI or Pygame
@@ -235,8 +304,7 @@ This orchestrated setup enables:
 ---
 
 ## Next Steps
-- Add test harnesses for multi-module simulations
-- Integrate visual UI frontend (optional)
-- Deploy to serverless container or AI agent platform
-
+- Add full event routing logic across real modules
+- Implement test runner with expected output assertions
+- Enable agent replay/record mode for LLM-assisted debugging
 
