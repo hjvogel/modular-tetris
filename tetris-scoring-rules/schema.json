@@ -1,0 +1,6 @@
+{
+    "event": "string",
+    "score": "integer",
+    "lines_cleared": "integer",
+    "level": "integer"
+  }

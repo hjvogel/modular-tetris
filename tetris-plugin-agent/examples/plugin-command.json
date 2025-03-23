@@ -1,0 +1,9 @@
+{
+    "command": "move_left",
+    "target_module": "tetris-move-controller",
+    "parameters": {
+      "piece_id": "T",
+      "position": [4, 0],
+      "rotation": 0
+    }
+  }

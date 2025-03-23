@@ -1,0 +1,5 @@
+{
+    "event": "string",
+    "button_id": "string",
+    "timestamp": "string"
+  }

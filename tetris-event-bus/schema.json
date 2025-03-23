@@ -1,0 +1,6 @@
+{
+    "event": "string",
+    "source": "string",
+    "payload": "object",
+    "timestamp": "string"
+  }

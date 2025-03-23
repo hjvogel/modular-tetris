@@ -1,0 +1,6 @@
+{
+    "id": "string",
+    "shape": "array",
+    "color": "string",
+    "rotations": "array"
+  }

@@ -1,0 +1,7 @@
+{
+    "event": "state_change",
+    "state": "paused",
+    "details": {
+      "paused_at": "2025-04-01T12:00:00Z"
+    }
+  }

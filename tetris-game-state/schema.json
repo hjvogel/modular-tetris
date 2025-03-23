@@ -1,0 +1,5 @@
+{
+    "event": "string",
+    "state": "string",
+    "details": "object"
+  }

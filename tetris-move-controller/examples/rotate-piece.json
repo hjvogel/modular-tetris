@@ -1,0 +1,7 @@
+{
+    "event": "move_action",
+    "action": "rotate",
+    "piece_id": "J",
+    "position": [5, 2],
+    "rotation": 180
+  }

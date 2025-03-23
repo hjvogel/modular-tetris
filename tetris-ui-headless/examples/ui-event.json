@@ -1,0 +1,7 @@
+{
+    "action": "button_press",
+    "ui_elements": [
+      {"type": "button", "id": "start"},
+      {"type": "button", "id": "pause"}
+    ]
+  }

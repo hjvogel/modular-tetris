@@ -1,0 +1,8 @@
+{
+    "event": "state_change",
+    "state": "game_start",
+    "details": {
+      "initial_level": 1,
+      "initial_score": 0
+    }
+  }

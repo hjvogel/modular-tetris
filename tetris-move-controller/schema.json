@@ -1,0 +1,7 @@
+{
+    "event": "string",
+    "action": "string",
+    "piece_id": "string",
+    "position": "array",
+    "rotation": "integer"
+  }

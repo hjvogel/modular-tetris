@@ -1,0 +1,9 @@
+{
+    "event": "state_change",
+    "state": "game_over",
+    "details": {
+      "reason": "collision_top",
+      "final_score": 1350,
+      "level_reached": 4
+    }
+  }
