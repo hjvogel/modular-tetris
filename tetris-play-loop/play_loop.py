@@ -17,11 +17,24 @@ class PlayLoop:
     def create_tick_event(self):
         event = {
             "event": "game_tick",
+            "source": "tetris-play-loop",
             "tick_number": self.tick_number,
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         }
         return json.dumps(event)
 
-# Example usage with pygame (pseudo-integration)
-# loop = PlayLoop(tick_rate=0.5)
-# loop.start_loop(duration_seconds=30)
+# Singleton instance
+loop = PlayLoop()
+
+# Plugin-compatible handler
+def handler(command, params):
+    if command == "create_tick":
+        return loop.create_tick_event()
+    elif command == "start_loop":
+        duration = params.get("duration_seconds", 10)
+        loop.start_loop(duration)
+        return json.dumps({"status": "loop_complete"})
+    return json.dumps({
+        "error": "Unknown loop command",
+        "received": command
+    })

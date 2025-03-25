@@ -4,16 +4,20 @@ class PluginAgent:
     def __init__(self):
         self.modules = {}
 
-    def register_module(self, name, handler):
-        self.modules[name] = handler
+    def register_module(self, name, handler_function):
+        self.modules[name] = handler_function
 
     def handle_command(self, command_json):
-        command_data = json.loads(command_json)
-        target = command_data.get("target_module")
-        if target in self.modules:
-            handler = self.modules[target]
-            return handler(command_data.get("command"), command_data.get("parameters"))
-        return json.dumps({"error": "Module not found"})
+        try:
+            command = json.loads(command_json)
+            module = command["target_module"]
+            handler = self.modules.get(module)
+            if handler is None:
+                return json.dumps({"error": f"Module not found: {module}"})
+            result = handler(command["command"], command.get("parameters", {}))
+            return result
+        except Exception as e:
+            return json.dumps({"error": str(e)})
 
 # Example usage (pseudo)
 # def move_controller_handler(command, params):

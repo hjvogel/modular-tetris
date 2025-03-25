@@ -17,14 +17,18 @@ class EventBus:
             "payload": payload,
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         }
-        event_json = json.dumps(event)
-        for callback in self.subscribers.get(event_type, []):
-            callback(event_json)
 
-# Example usage with pseudo-integration
-# def handle_event(event_json):
-#     print("Received event:", event_json)
-# 
+        for callback in self.subscribers.get(event_type, []):
+            try:
+                callback(event_type, payload)
+            except Exception as e:
+                print(f"[EventBus Error] Failed to call subscriber for {event_type}: {e}")
+
+
+# Example usage
+# def handle_event(command, params):
+#     print("Handled:", command, params)
+#
 # bus = EventBus()
-# bus.subscribe("piece_placed", handle_event)
-# bus.publish("piece_placed", "tetris-board-engine", {"piece_id": "T", "position": [4, 1], "rotation": 90})
+# bus.subscribe("state_change", handle_event)
+# bus.publish("state_change", "tetris-game-state", {"state": "start"})
