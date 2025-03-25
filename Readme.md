@@ -175,10 +175,15 @@ Each module implements a `handler(command, params)` interface that returns stand
 
 ```python
 bus = EventBus()
+
+# Wiring example
+bus.subscribe("button_press", state_handler)
+bus.subscribe("state_change", board_handler)
+bus.subscribe("game_tick", move_handler)
 bus.subscribe("move_action", board_handler)
 bus.subscribe("piece_placed", scoring_handler)
-bus.subscribe("game_tick", move_handler)
-bus.subscribe("button_press", state_handler)
+bus.subscribe("score_update", ui_handler)
+bus.subscribe("render_board", ui_handler)
 ```
 
 This enables real-time, decoupled communication.
