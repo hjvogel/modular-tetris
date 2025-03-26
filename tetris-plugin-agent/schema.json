@@ -1,5 +1,0 @@
-{
-    "command": "string",
-    "target_module": "string",
-    "parameters": "object"
-  }

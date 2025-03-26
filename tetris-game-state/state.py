@@ -77,10 +77,7 @@ class GameState:
         else:
             self.place()
             cleared = board.board.clear_lines()
-            print("clear line")
-            print (agent)
             if cleared > 0 and agent:
-                print("Update score after clear line")
                 agent.handle_command(json.dumps({
                     "command": "update_score",
                     "target_module": "tetris-scoring-rules",

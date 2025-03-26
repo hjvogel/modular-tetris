@@ -1,0 +1,10 @@
+{
+    "event": "entity_updated",
+    "source": "ai-agent-manager",
+    "payload": {
+      "entity_id": "agent_42",
+      "status": "moving",
+      "position": [10, 5]
+    },
+    "timestamp": "2025-04-01T12:00:05Z"
+  }

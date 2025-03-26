@@ -2,13 +2,10 @@ import os
 import sys
 import json
 
-# Dynamically add plugin repo paths (no renaming needed)
+# Resolve path to plugin_agent in the same folder as this script
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(repo_root)
 
-sys.path.append(os.path.join(repo_root, 'tetris-plugin-agent'))
-sys.path.append(os.path.join(repo_root, 'tetris-event-bus'))
-
-# Now you can import
 from plugin_agent import PluginAgent
 from event_bus import EventBus
 

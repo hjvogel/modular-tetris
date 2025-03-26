@@ -2,8 +2,6 @@ import sys, os, json, time, threading
 import pygame
 
 sys.path.extend([
-    "./tetris-plugin-agent",
-    "./tetris-event-bus",
     "./tetris-board-engine",
     "./tetris-move-controller",
     "./tetris-scoring-rules",

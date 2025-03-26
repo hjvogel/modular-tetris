@@ -1,14 +1,25 @@
+
 # Modular Tetris: Master Repo
 
 ## Overview
 
-**Modular Tetris** is designed for maximum flexibility, clarity, and ease of integration, optimized for LLM-based interaction and modular plugin usage. Each component is a separate GitHub sub-repository, enabling independent management, enhancement, or replacement.
+**Modular Tetris** is a highly pluggable, fully decoupled, LLM-friendly implementation here of Tetris or any other game where every game component is its own independent module. All modules communicate strictly through JSON commands and events, orchestrated by a lightweight `plugin_agent.py` and routed by `event_bus.py`.
 
-## Master Repo Structure
+This architecture supports dynamic plugin registration, low-code extensibility, and easy interaction with LLMs, GUI-less runtimes, or web-based UIs.
+
+---
+
+## Repo Structure
 
 ```
 modular-tetris/
-├── README.md
+├── main.py
+├── plugin_agent.py
+├── event_bus.py
+├── examples/
+│   ├── integration-example.json
+│   ├── plugin-command.json
+│   └── sample-event.json
 ├── tetris-blocks-data/
 ├── tetris-board-engine/
 ├── tetris-move-controller/
@@ -17,71 +28,188 @@ modular-tetris/
 ├── tetris-ui-headless/
 ├── tetris-play-loop/
 ├── tetris-ui-buttons/
-├── tetris-event-bus/
-├── tetris-plugin-agent/
-├── tests/test_harness.py
-└── examples/
-    └── integration-example.json
+├── tests/
+│   └── test_harness.py
+└── README(s).md
 ```
 
-## Included Modules (Sub-Repos)
+---
 
-1. **tetris-blocks-data**: Static definitions for Tetris blocks.
-2. **tetris-board-engine**: Handles board state, collision, and piece placement.
-3. **tetris-move-controller**: Processes player input into game events.
-4. **tetris-scoring-rules**: Manages scoring based on gameplay.
-5. **tetris-game-state**: Controls game states (start, pause, resume, end).
-6. **tetris-ui-headless**: Headless interface, pluggable rendering.
-7. **tetris-play-loop**: Manages game ticks and pacing.
-8. **tetris-ui-buttons**: Manages UI button controls.
-9. **tetris-event-bus**: Central event communication between modules.
-10. **tetris-plugin-agent**: Enables LLM-based module interaction.
+## Included Modules
+
+Each sub-repo is imported as a Python plugin and implements a JSON-compatible handler:
+
+| Module                    | Purpose                                             |
+|--------------------------|-----------------------------------------------------|
+| `tetris-blocks-data`     | Static JSON definitions for all Tetris block shapes |
+| `tetris-board-engine`    | Grid, placement, and collision detection            |
+| `tetris-move-controller` | Interprets user input into movement events          |
+| `tetris-scoring-rules`   | Calculates score based on lines cleared             |
+| `tetris-game-state`      | Handles gameplay lifecycle events                   |
+| `tetris-ui-headless`     | Renders the board using Pygame or headless console  |
+| `tetris-play-loop`       | Emits periodic game tick events                     |
+| `tetris-ui-buttons`      | Handles UI button click events                      |
+
+---
+
+## Core Infrastructure
+
+| Component        | Description |
+|------------------|-------------|
+| `plugin_agent.py` | Registers callable plugins and routes commands by target module |
+| `event_bus.py`    | Enables pub-sub message flow between modules using JSON events  |
+
+---
 
 ## Usage
 
-### Integrating Modules
+### Launch the Game
 
-Each module provides clear JSON schemas and practical examples for immediate integration. Connect modules via the `tetris-event-bus` using standardized event types:
+```bash
+python main.py
+```
+
+### Start Game (via UI)
+
+Click the `Start` button to begin gameplay. Use arrow keys to control blocks.
+
+---
+
+## Event Bus Communication
+
+All modules use the `EventBus` to send or receive structured events:
 
 ```json
 {
-  "event": "state_change",
-  "state": "game_over",
-  "details": {
-    "reason": "collision_top",
-    "final_score": 1300
+  "event": "score_update",
+  "source": "tetris-scoring-rules",
+  "payload": {
+    "total_score": 800
+  },
+  "timestamp": "2025-04-01T12:00:05Z"
+}
+```
+
+---
+
+## Plugin Agent Command Routing
+
+Example JSON command that gets routed via `plugin_agent.py`:
+
+```json
+{
+  "command": "move_left",
+  "target_module": "piece-move-controller",
+  "parameters": {
+    "position": [4, 0]
   }
 }
 ```
 
-### Adding or Replacing Plugins
+---
 
-To add or replace a module:
-- Create a new GitHub repo adhering to the existing JSON schema and event standards.
-- Integrate it into the event bus by publishing and subscribing to standardized events.
-- Replace existing modules by simply changing references in the event bus configuration.
+## LLM Integration Example (ReplacebAI)
 
-## LLM Integration (ReplacebAI)
-
-Use standardized LLM prompts to communicate and manage modules:
-
-- Example prompt:
 ```
-"Manage and synchronize game state transitions (start, pause, resume, end) based on gameplay events."
+"Rotate the active Tetris piece clockwise by sending a 'rotate' command to the move controller."
 ```
+
+---
+
+## Best Practice Assembly: Modular Tetris via Plugin Orchestration
+
+This is how `main.py` glues everything together:
+
+### Step 1: Register Plugins
+
+```python
+agent = PluginAgent()
+agent.register_module("tetris-board-engine", board.handler)
+agent.register_module("tetris-move-controller", move.handler)
+agent.register_module("tetris-scoring-rules", scoring.handler)
+agent.register_module("tetris-game-state", state.handler)
+agent.register_module("tetris-ui-buttons", buttons.handler)
+agent.register_module("tetris-play-loop", play_loop.handler)
+agent.register_module("tetris-ui-headless", ui.handler)
+```
+
+---
+
+### Step 2: Setup Event Bus
+
+```python
+bus = EventBus()
+bus.subscribe("button_press", state.handler)
+bus.subscribe("state_change", board.handler)
+bus.subscribe("move_action", board.handler)
+bus.subscribe("piece_placed", scoring.handler)
+bus.subscribe("score_update", ui.handler)
+```
+
+---
+
+### Step 3: Run Tick Loop
+
+The game loop emits tick events that move the piece down periodically.
+
+```python
+def loop_runner():
+    for _ in range(999):
+        tick = json.loads(agent.handle_command(json.dumps({
+            "command": "create_tick",
+            "target_module": "tetris-play-loop"
+        })))
+        bus.publish("game_tick", "tetris-play-loop", tick)
+        time.sleep(1)
+```
+
+---
+
+## Test Harness (`tests/test_harness.py`)
+
+A mock test file to validate plugin commands without full GUI or engine:
+
+```python
+from plugin_agent import PluginAgent
+from event_bus import EventBus
+
+agent = PluginAgent()
+bus = EventBus()
+
+def mock_handler(name):
+    def handler(command, params):
+        print(f"[{name}] Received '{command}' with params {params}")
+        return json.dumps({"status": "ok"})
+    return handler
+
+agent.register_module("tetris-move-controller", mock_handler("move"))
+agent.register_module("tetris-ui-buttons", mock_handler("buttons"))
+
+commands = [
+    {"command": "start", "target_module": "tetris-ui-buttons", "parameters": {}},
+    {"command": "move_left", "target_module": "tetris-move-controller", "parameters": {"position": [0, 0]}}
+]
+
+for cmd in commands:
+    print(agent.handle_command(json.dumps(cmd)))
+```
+
+---
 
 ## Lean Development Loop
 
-Follow this iterative process for continuous improvement:
+1. **Define**: JSON schema for command and event interfaces.
+2. **Develop**: Module as a plugin with `handler(command, params)` function.
+3. **Test**: Use the harness or manual plugin registration.
+4. **Integrate**: Hook into the bus, use the agent, render via UI module.
 
-1. **Define**: JSON schema and module purpose clearly.
-2. **Develop**: Implement core functionality.
-3. **Test**: Validate and refine using provided examples.
-4. **Integrate**: Confirm smooth communication via the event bus.
+---
 
 ## Contributing
 
-Feel free to enhance or propose new modules by creating pull requests with clear documentation and schemas, following the modular approach described.
+- Fork any module and make improvements
+- New modules must respect the plugin interface and schemas
+- Submit integration example and sample test in `examples/`
 
 ---
 
@@ -102,28 +230,7 @@ Feel free to enhance or propose new modules by creating pull requests with clear
     "board": {
       "width": 10,
       "height": 20,
-      "grid": [
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-      ]
+      "grid": [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]] * 20
     }
   }
 }
@@ -131,185 +238,17 @@ Feel free to enhance or propose new modules by creating pull requests with clear
 
 ---
 
-### Next Steps:
-- Continuously validate and refine integration across modules.
-- Encourage community-driven enhancements and module expansions.
+## Why Is It Modular?
 
-# Best Practice Assembly: Modular Tetris via Plugin Orchestration
-
-## Overview
-
-This section describes how an LLM or lightweight controller assembles all 10 modular Tetris repositories into a functional, tested, and playable Pygame-based version. It leverages the plugin-agent architecture to dynamically wire up components through JSON schemas, event publishing, and reactive handlers.
-
----
-# Best Practice Assembly: Modular Tetris via Plugin Orchestration
-
-## Overview
-
-This section describes how an LLM or lightweight controller assembles all 10 modular Tetris repositories into a functional, tested, and playable Pygame-based version. It leverages the plugin-agent architecture to dynamically wire up components through JSON schemas, event publishing, and reactive handlers.
-
----
-
-## Modular Assembly Process (LLM/Agent Orchestration)
-
-### Step 1: **Plugin Registration**
-The `PluginAgent` loads all modules as callable plugin handlers:
-
-```python
-agent = PluginAgent()
-agent.register_module("tetris-board-engine", board_handler)
-agent.register_module("tetris-move-controller", move_handler)
-agent.register_module("tetris-scoring-rules", scoring_handler)
-agent.register_module("tetris-game-state", state_handler)
-agent.register_module("tetris-ui-buttons", button_handler)
-agent.register_module("tetris-play-loop", loop_handler)
-agent.register_module("tetris-event-bus", event_handler)
-```
-
-Each module implements a `handler(command, params)` interface that returns standardized JSON events.
-
----
-
-### Step 2: **Initialize Event Bus**
-`EventBus` is set up to allow pub-sub style messaging:
-
-```python
-bus = EventBus()
-
-# Wiring example
-bus.subscribe("button_press", state_handler)
-bus.subscribe("state_change", board_handler)
-bus.subscribe("game_tick", move_handler)
-bus.subscribe("move_action", board_handler)
-bus.subscribe("piece_placed", scoring_handler)
-bus.subscribe("score_update", ui_handler)
-bus.subscribe("render_board", ui_handler)
-```
-
-This enables real-time, decoupled communication.
-
----
-
-### Step 3: **UI and Play Loop Kickoff**
-The `PlayLoop` begins emitting ticks. The `UIHeadless` listens for render events, and `UIButtonHandler` emits control messages.
-
-```python
-loop = PlayLoop(tick_rate=0.5)
-loop.start_loop(duration_seconds=9999)
-```
-
----
-
-### Step 4: **Gameplay Interaction Flow**
-1. User presses "Start" → UIButtons emits `button_press`
-2. GameState sets `game_start` and board initializes a piece
-3. `PlayLoop` ticks → `move_controller` emits a move
-4. `board_engine` checks for placement → emits `piece_placed`
-5. `scoring_rules` updates score
-6. `UIHeadless` renders new board
-
-Each step is driven by events and JSON payloads.
-
----
-
-## LLM Runtime Command (Example)
-
-```json
-{
-  "command": "rotate",
-  "target_module": "tetris-move-controller",
-  "parameters": {
-    "piece_id": "T",
-    "position": [4, 0],
-    "rotation": 0
-  }
-}
-```
-
-The agent receives this, routes to `move_controller`, which emits a `move_action` → routed by the event bus to update the board.
-
----
-
-## Testing and Observability
-- Each module is tested in isolation using provided `examples/*.json`
-- LLM can simulate full gameplay by emitting event chains
-- Console prints or headless logs provide traceability
-
----
-
-## Plugin-Based Test Harness
-
-To run the integration harness:
-
-```bash
-python tests/test_harness.py
-```
-
-This executes commands via the `tetris-plugin-agent` interface and routes them through the modular system.
-
-### Test Harness File: `tests/test_harness.py`
-
-```python
-import json
-from ~/tetris_plugin_agent.plugin_agent import PluginAgent
-from ~/tetris_event_bus.event_bus import EventBus
-
-# Dummy handler mocks (replace with real implementations for full test)
-def mock_handler(name):
-    def handler(command, params):
-        print(f"[{name}] Received command '{command}' with params {params}")
-        return json.dumps({"status": "ok", "module": name, "command": command})
-    return handler
-
-# Register core plugins
-agent = PluginAgent()
-agent.register_module("tetris-board-engine", mock_handler("board"))
-agent.register_module("tetris-move-controller", mock_handler("move"))
-agent.register_module("tetris-scoring-rules", mock_handler("score"))
-agent.register_module("tetris-game-state", mock_handler("state"))
-agent.register_module("tetris-ui-buttons", mock_handler("buttons"))
-agent.register_module("tetris-play-loop", mock_handler("loop"))
-agent.register_module("tetris-event-bus", mock_handler("bus"))
-
-# Sample command sequence
-commands = [
-    {
-        "command": "start",
-        "target_module": "tetris-ui-buttons",
-        "parameters": {"button_id": "start"}
-    },
-    {
-        "command": "move_left",
-        "target_module": "tetris-move-controller",
-        "parameters": {"piece_id": "T", "position": [4, 0], "rotation": 0}
-    },
-    {
-        "command": "rotate",
-        "target_module": "tetris-move-controller",
-        "parameters": {"piece_id": "T", "position": [3, 0], "rotation": 0}
-    }
-]
-
-# Execute commands
-for cmd in commands:
-    print("\n--- Sending Command ---")
-    result = agent.handle_command(json.dumps(cmd))
-    print("Response:", result)
-```
-
----
-
-## Final Result
-This orchestrated setup enables:
-- Fully playable Tetris via headless UI or Pygame
-- Any component replaceable via schema-compatible plugin
-- Zero hard-coded coupling between logic units
-- Scalable LLM-assisted debugging and runtime control
+- **No hardcoded game rules** in `main.py`
+- All pieces are plugins: board, move, scoring, state
+- Easy to swap rendering system, add AI, etc.
+- LLM or CLI can command the system via JSON
 
 ---
 
 ## Next Steps
-- Add full event routing logic across real modules
-- Implement test runner with expected output assertions
-- Enable agent replay/record mode for LLM-assisted debugging
 
+- Add more UIs (WebSocket, Tkinter, browser)
+- Extend test coverage across plugin boundaries
+- Train LLM agents to control gameplay using schema and event logs

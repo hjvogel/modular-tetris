@@ -69,15 +69,38 @@ class PlayLoop:
     def create_tick_event(self):
         event = {
             "event": "game_tick",
+            "source": "tetris-play-loop",
             "tick_number": self.tick_number,
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         }
         return json.dumps(event)
 
-# Example usage with pygame (pseudo-integration)
-# loop = PlayLoop(tick_rate=0.5)
-# loop.start_loop(duration_seconds=30)
+# Singleton instance
+loop = PlayLoop()
+
+# Plugin-compatible handler
+def handler(command, params):
+    if command == "create_tick":
+        return loop.create_tick_event()
+    elif command == "start_loop":
+        duration = params.get("duration_seconds", 10)
+        loop.start_loop(duration)
+        return json.dumps({"status": "loop_complete"})
+    return json.dumps({
+        "error": "Unknown loop command",
+        "received": command
+    })
 ```
+
+## Headless / Test Mode Support
+
+Although the `start_loop()` method is not used by the interactive Pygame UI mode, it is intentionally kept in the codebase for:
+
+- **Automated simulation or test runs**
+- **Headless gameplay scenarios (e.g., LLM testing, CI/CD pipelines)**
+- **Future modes (demo playback, benchmarking, scripting)**
+
+This supports better separation of UI and logic, and enables broader plugin reuse beyond the Pygame interface.
 
 ## Lean Development Loop
 
@@ -91,4 +114,3 @@ class PlayLoop:
 ## Next Steps
 - Continuously refine timing and responsiveness based on feedback.
 - Expand loop management documentation and examples.
-
