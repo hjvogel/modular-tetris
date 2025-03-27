@@ -60,6 +60,7 @@ class GameState:
 
     def start(self):
         load_blocks()
+        board.board.clear_grid()
         self.current_rotation = 0
         self.current_block = random.choice(self.blocks)
         self.current_block_pos = [3, 0]

@@ -8,10 +8,12 @@ CONFIG_PATH = os.path.join(os.path.dirname(__file__), "tetris-board-engine\\tetr
 with open(CONFIG_PATH) as f:
     config = json.load(f)
 
+GAME_NAME = config.get("game_name", "Modular Tetris2")
 CELL_SIZE = config.get("cell_size", 30)
 GRID_WIDTH = config.get("grid_width", 10)
 GRID_HEIGHT = config.get("grid_height", 20)
 BUTTON_HEIGHT = config.get("button_height", 40)
+screen = pygame.display.set_mode((CELL_SIZE * GRID_WIDTH, CELL_SIZE * GRID_HEIGHT + 80))
 
 class UIHeadless:
     def __init__(self):
@@ -24,7 +26,7 @@ class UIHeadless:
     def set_bus(self, bus):
         self.bus = bus
 
-    def initialize(self, screen):
+    def initialize(self):
         print("UIHeadless initialize")
         self.screen = screen
         self.font = pygame.font.SysFont("Arial", 20)
@@ -34,6 +36,7 @@ class UIHeadless:
             {"id": "quit", "label": "Quit", "pos": (210, GRID_HEIGHT * CELL_SIZE + 5)},
         ]
         self.render_buttons()
+        pygame.display.set_caption(GAME_NAME)
 
     def render_board(self, board_state, score_state=None):
         grid = board_state.get("grid", [])

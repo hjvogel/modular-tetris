@@ -38,6 +38,9 @@ class TetrisBoard:
             new_grid.insert(0, [0] * self.width)
         self.grid = new_grid
         return cleared
+    
+    def clear_grid(self):
+        self.grid = [[0] * self.width for _ in range(self.height)]
 
     def get_board_state(self):
         return {

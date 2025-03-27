@@ -1,6 +1,7 @@
 import sys, os, json, time, threading
 import pygame
 
+# TODO import all specific here tetris stuff from a main game (best of breed bundle) config
 sys.path.extend([
     "./tetris-board-engine",
     "./tetris-move-controller",
@@ -14,9 +15,6 @@ from event_bus import EventBus
 import board, move, scoring, state, ui_headless as ui, buttons, play_loop
 
 pygame.init()
-CELL_SIZE, GRID_WIDTH, GRID_HEIGHT = 30, 10, 20
-screen = pygame.display.set_mode((CELL_SIZE * GRID_WIDTH, CELL_SIZE * GRID_HEIGHT + 80))
-pygame.display.set_caption("Modular Tetris")
 clock = pygame.time.Clock()
 
 agent = PluginAgent()
@@ -32,7 +30,7 @@ agent.register_module("tetris-game-state", state.handler)
 agent.register_module("tetris-ui-buttons", buttons.handler)
 
 agent.register_module("play-loop", play_loop.handler)
-agent.register_module("tetris-ui-headless", ui.handler)
+agent.register_module("ui-headless", ui.handler)
 
 bus.subscribe("button_press", state.handler)
 bus.subscribe("state_change", board.handler)
@@ -41,7 +39,7 @@ bus.subscribe("piece_placed", scoring.handler)
 bus.subscribe("score_update", ui.handler)
 
 ui.ui.set_bus(bus)
-ui.ui.initialize(screen)
+ui.ui.initialize()
 
 shared_state = {
     "game_running": False,
@@ -64,7 +62,6 @@ def handle_key_event(key):
 def handle_button_click(button_id):
     if button_id == "start":
         shared_state.update({"game_running": True, "tick_number": 0})
-        board.board.grid = [[0] * GRID_WIDTH for _ in range(GRID_HEIGHT)]
         agent.handle_command(json.dumps({
             "command": "reset_score",
             "target_module": "tetris-scoring-rules"
