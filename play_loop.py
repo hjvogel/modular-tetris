@@ -17,7 +17,7 @@ class PlayLoop:
     def create_tick_event(self):
         event = {
             "event": "game_tick",
-            "source": "tetris-play-loop",
+            "source": "play-loop",
             "tick_number": self.tick_number,
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         }

@@ -1,12 +1,17 @@
-
 import pygame
 import json
 import time
+import os
 
-CELL_SIZE = 30
-GRID_WIDTH = 10
-GRID_HEIGHT = 20
-BUTTON_HEIGHT = 40
+# Load UI config
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "tetris-board-engine\\tetris_ui_config.json")
+with open(CONFIG_PATH) as f:
+    config = json.load(f)
+
+CELL_SIZE = config.get("cell_size", 30)
+GRID_WIDTH = config.get("grid_width", 10)
+GRID_HEIGHT = config.get("grid_height", 20)
+BUTTON_HEIGHT = config.get("button_height", 40)
 
 class UIHeadless:
     def __init__(self):

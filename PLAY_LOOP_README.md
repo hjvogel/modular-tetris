@@ -7,9 +7,9 @@ This repository manages the core game loop for Tetris, handling timing, game tic
 ## Repo Structure
 
 ```
-tetris-play-loop/
+root
 ├── README.md
-├── schema.json
+├── (schema.json)
 ├── play_loop.py
 └── examples/
     └── tick-event.json
@@ -50,7 +50,7 @@ Use standardized tick events to synchronize the Tetris gameplay pacing with othe
 ## play_loop.py
 
 ```python
-import json
+mport json
 import time
 
 class PlayLoop:
@@ -69,7 +69,7 @@ class PlayLoop:
     def create_tick_event(self):
         event = {
             "event": "game_tick",
-            "source": "tetris-play-loop",
+            "source": "play-loop",
             "tick_number": self.tick_number,
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         }

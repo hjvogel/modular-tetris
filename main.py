@@ -6,9 +6,7 @@ sys.path.extend([
     "./tetris-move-controller",
     "./tetris-scoring-rules",
     "./tetris-game-state",
-    "./tetris-ui-headless",
-    "./tetris-ui-buttons",
-    "./tetris-play-loop"
+    "./tetris-ui-buttons"
 ])
 
 from plugin_agent import PluginAgent
@@ -32,7 +30,8 @@ agent.register_module("tetris-move-controller", move.handler)
 agent.register_module("tetris-scoring-rules", scoring.handler)
 agent.register_module("tetris-game-state", state.handler)
 agent.register_module("tetris-ui-buttons", buttons.handler)
-agent.register_module("tetris-play-loop", play_loop.handler)
+
+agent.register_module("play-loop", play_loop.handler)
 agent.register_module("tetris-ui-headless", ui.handler)
 
 bus.subscribe("button_press", state.handler)
@@ -115,9 +114,9 @@ while running:
             for _ in range(999):
                 tick = json.loads(agent.handle_command(json.dumps({
                     "command": "create_tick",
-                    "target_module": "tetris-play-loop"
+                    "target_module": "play-loop"
                 })))
-                bus.publish("game_tick", "tetris-play-loop", tick)
+                bus.publish("game_tick", "play-loop", tick)
                 time.sleep(1)
         threading.Thread(target=loop_runner, daemon=True).start()
 

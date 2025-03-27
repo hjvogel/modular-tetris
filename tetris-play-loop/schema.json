@@ -1,5 +1,0 @@
-{
-    "event": "string",
-    "tick_number": "integer",
-    "timestamp": "string"
-  }
