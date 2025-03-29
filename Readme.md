@@ -2,15 +2,15 @@
 
 ## Overview
 
-**Modular Tetris** is a highly pluggable, fully decoupled, LLM-friendly architecture that implements Tetris using reusable, independently testable **modules**. Every component of gameplay—board, movement, UI, scoring, game logic—is built as its **own micro-repository** and **communicates only through JSON**.
+**Modular Tetris** is a highly pluggable, fully decoupled, LLM-friendly architecture implementing Tetris with reusable, independently testable **modules**. Every aspect of gameplay—board, movement, UI, scoring, and game logic—is maintained as its own micro-repository and communicates exclusively via structured JSON events.
 
-> ✅ **No hardcoded game logic in `main.py`**  
-> ✅ **Pluggable UI, logic, rendering, and control layers**  
-> ✅ **Ready for AI orchestration, plugin economics, and NFT-like tokenized code**
+> ✅ **No hardcoded logic in `main.py`**  
+> ✅ **Flexible UI, logic, rendering, and controls**  
+> ✅ **AI-ready orchestration and NFT-like tokenization**
 
 ---
 
-## Repo Structure
+## Updated Repo Structure
 
 ```
 modular-tetris/
@@ -19,13 +19,19 @@ modular-tetris/
 ├── event_bus.py
 ├── play_loop.py
 ├── ui_headless.py
+├── tetris-config/
+│   └── game_config.json
 ├── tetris-blocks-data/
 ├── tetris-board-engine/
-│   └── tetris_ui_config.json
+│   └── board.py
 ├── tetris-move-controller/
+│   └── move.py
 ├── tetris-scoring-rules/
+│   └── scoring.py
 ├── tetris-game-state/
+│   └── state.py
 ├── tetris-ui-buttons/
+│   └── buttons.py
 ├── examples/
 │   ├── integration-example.json
 │   ├── plugin-command.json
@@ -44,14 +50,14 @@ modular-tetris/
 
 | Module                   | Purpose                                                  |
 |--------------------------|----------------------------------------------------------|
-| `tetris-blocks-data`     | JSON-only piece definitions                              |
-| `tetris-board-engine`    | Board state, collision, placement                        |
-| `tetris-move-controller` | Movement interpretation, position calculation            |
-| `tetris-scoring-rules`   | Score logic and line-clear detection                     |
-| `tetris-game-state`      | Tracks gameplay state (start, pause, resume, end)        |
-| `tetris-ui-buttons`      | Button rendering + events                                |
-| `ui-headless`            | Pygame canvas rendering (no layout logic hardcoded)      |
-| `play_loop.py`           | Emits ticks as timed JSON events                         |
+| `tetris-blocks-data`     | JSON-defined Tetris blocks with rotations and colors     |
+| `tetris-board-engine`    | Grid management, collision detection, line clearing      |
+| `tetris-move-controller` | User input interpretation and position updates           |
+| `tetris-scoring-rules`   | Score tracking based on lines cleared                    |
+| `tetris-game-state`      | Gameplay states: start, pause, resume, game over         |
+| `tetris-ui-buttons`      | UI button events handling                                |
+| `ui_headless.py`         | Flexible Pygame rendering (JSON-configurable layout)     |
+| `play_loop.py`           | Periodic game tick emitter                               |
 
 ---
 
@@ -59,27 +65,27 @@ modular-tetris/
 
 | Component         | Description                                                               |
 |-------------------|---------------------------------------------------------------------------|
-| `plugin_agent.py` | Registers modules and dispatches structured JSON commands                 |
-| `event_bus.py`    | Manages pub-sub event routing between modules using `event_type` channels |
-| `ui_headless.py`  | Headless UI rendering with JSON-driven layout from `tetris_ui_config.json`|
+| `plugin_agent.py` | Dynamic module registration and JSON command dispatching                  |
+| `event_bus.py`    | Pub/sub JSON event handling between independent modules                   |
+| `ui_headless.py`  | JSON-driven headless UI renderer, extensible for any game                 |
 
 ---
 
-## Run the Game
+## Running the Modular Game
 
 ```bash
 python main.py
 ```
 
-Then click **Start** or use the arrow keys (⬅️➡️⬇️⬆️) to play.
+Click **Start** to play or use arrow keys (⬅️➡️⬇️⬆️).
 
 ---
 
-## JSON API Communication
+## JSON Event Communication
 
-Every interaction is JSON-driven:
+Modules interact strictly through JSON events:
 
-### Event Bus Payload Example
+### Event Bus Example
 
 ```json
 {
@@ -90,99 +96,88 @@ Every interaction is JSON-driven:
 }
 ```
 
-### Plugin Agent Command Example
+### Plugin Agent Example Command
 
 ```json
 {
-  "command": "move_left",
+  "command": "rotate",
   "target_module": "tetris-move-controller",
-  "parameters": { "position": [4, 0] }
+  "parameters": { "position": [5, 1] }
 }
 ```
 
 ---
 
-## Modular Assembly Flow (LLM Orchestrated)
+## Modular Integration Flow
 
-### Step 1: Register Plugins
+### Step 1: Registering Plugins (from `game_config.json`)
 
-```python
-agent.register_module("tetris-board-engine", board.handler)
-agent.register_module("tetris-move-controller", move.handler)
-agent.register_module("tetris-scoring-rules", scoring.handler)
-agent.register_module("tetris-game-state", state.handler)
-agent.register_module("tetris-ui-buttons", buttons.handler)
-
-agent.register_module("play-loop", play_loop.handler)
-agent.register_module("ui-headless", ui.handler)
-```
-
-### Step 2: Setup Event Routing
+Plugins are registered dynamically from the config:
 
 ```python
-bus.subscribe("button_press", state.handler)
-bus.subscribe("state_change", board.handler)
-bus.subscribe("move_action", board.handler)
-bus.subscribe("piece_placed", scoring.handler)
-bus.subscribe("score_update", ui.handler)
+for module in config["modules"]:
+    agent.register_module(module["name"], plugins[module["name"]].handler)
 ```
 
-### Step 3: Game Loop & Tick Events
+### Step 2: Event Bus Setup (configurable)
+
+Event subscriptions from JSON config:
+
+```python
+for sub in config["event_subscriptions"]:
+    bus.subscribe(sub["event_type"], plugins[sub["target_module"]].handler)
+```
+
+### Step 3: Game Loop Execution (generic)
 
 ```python
 def loop_runner():
-    for _ in range(999):
+    for _ in range(config["tick_count"]):
         tick = json.loads(agent.handle_command(json.dumps({
-            "command": "create_tick",
-            "target_module": "play-loop"
+            "command": config["tick_create_command"],
+            "target_module": config["loop_module"]
         })))
-        bus.publish("game_tick", "play-loop", tick)
-        time.sleep(1)
+        bus.publish("game_tick", config["loop_module"], tick)
+        time.sleep(config["tick_interval"])
 ```
 
 ---
 
-## Test Harness
+## Extensible Test Harness
 
-```python
-from plugin_agent import PluginAgent
-agent = PluginAgent()
-agent.register_module("tetris-ui-buttons", mock_handler("buttons"))
-agent.register_module("tetris-move-controller", mock_handler("move"))
-```
+Quickly validate module communication:
 
-Run tests using:
 ```bash
 python tests/test_harness.py
 ```
 
 ---
 
-## Tokenization Vision: The Future of Modular Games
+## Tokenization and Modular Economics Vision
 
-This project lays the foundation for **economic plugin ecosystems**.
+**Modular Tetris** is a foundational step toward a broader **tokenized code marketplace**:
 
-- Every module is independently swappable - improvable - open for best of breed.
-- Each plugin could be tokenized like an image, NFT, or microservice once value is slightly above 0.
-- Ownership of a `tetris-*` or just a `game-*` repo can represent value: contribute better game-logics, claim micro-rewards.
-- Use LLMs to benchmark plugin performance, reliability, or innovation.
+- Each module (`tetris-board-engine`, `tetris-scoring-rules`) could be tokenized and economically incentivized.
+- Contributors earn micropayments based on the quality, efficiency, and popularity of their modules.
+- LLM-assisted benchmarking to fairly assess plugin performance and value.
 
-> Imagine a world where creating a better scoring system earns you real-time micro-payments in open game economies.  
-> This is **open protocol gaming**—backed by JSON, extensible by LLMs, and driven by incentives.
+> Imagine building and earning from an open, composable marketplace for game components. This modular architecture lays the groundwork.
 
 ---
 
-## LLM Prompt Examples (ReplacebAI)
+## LLM Integration Prompts (ReplacebAI)
+
+Example AI integration prompts:
 
 ```
-"Send a command to pause the game."
-"Request a tick event from the loop module."
-"Query the current board state and score."
+"Send JSON command to start a new game."
+"Request current score from the scoring module."
+"Rotate current block clockwise using move controller."
 ```
 
 ---
 
-## integration-example.json
+## Example Integration JSON (`integration-example.json`)
 
 ```json
 {
@@ -199,7 +194,7 @@ This project lays the foundation for **economic plugin ecosystems**.
     "board": {
       "width": 10,
       "height": 20,
-      "grid": [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]] * 20
+      "grid": [[0,0,0,0,0,0,0,0,0,0]] * 20
     }
   }
 }
@@ -207,27 +202,49 @@ This project lays the foundation for **economic plugin ecosystems**.
 
 ---
 
-## Why This Matters
+## Why Modular?
 
-- **LLM-Safe**: Every action can be represented in plain JSON.
-- **Game Agnostic**: Swap Tetris logic for Chess or Snake without code rewrite.
-- **Extensible**: Just add a module folder and register it.
-- **Tokenizable**: The first open framework for NFT-like **modular game logic**.
+- **LLM-safe**: JSON-only interactions, easily parsed by AI.
+- **Game Agnostic**: Quickly adapt to other games or scenarios without major rewrites.
+- **Composable**: Easily swap components, improve logic, rendering or scoring.
+- **Tokenizable**: Enable genuine economic incentives and code ownership.
 
 ---
 
-## Roadmap
+## Project Roadmap & Next Steps
 
-- [ ] Add scoring plugin market (token economics)
-- [ ] Publish event schemas as open standard
-- [ ] Train LLM agents to improve performance and UX
-- [ ] Enable browser-based headless rendering + WebSocket bridge
+- [x] Generalized configuration (`game_config.json`) for easy game swapping
+- [ ] Integrated multi-game selector in `main.py` (Chess, Snake, etc.)
+- [ ] Launch an open plugin marketplace for code economy
+- [ ] Publish event schemas as an open interoperability standard
+- [ ] Implement browser-based headless rendering (WebSocket)
+- [ ] LLM-powered plugin analysis and scoring mechanisms
+
+---
+
+## Future Expansion: Adding Other Games
+
+1. **Create a new config JSON** for the desired game (e.g., Snake, Chess).
+2. **Implement or fork necessary plugin repos** matching the modular schema.
+3. **Add new modules** to `plugin_paths` and `modules` in the game config.
+4. **Run main.py** and select new game via integrated selector.
+
+---
+
+## How to Contribute
+
+- **Fork** individual modules (`tetris-board-engine`, etc.) and improve.
+- **Extend** or create new modules following JSON-schema guidelines.
+- **Integrate** your plugin through pull requests and community feedback.
 
 ---
 
 ## Join the Movement
 
-Build smarter games  
-Refactor with intent  
-Earn from improvements - Tokenized Code Economy incoming
-Plug into the **Composable Gaming Economy**
+Help build a new era of modular, composable games:  
+
+✅ **Refactor** with clear incentives  
+✅ **Contribute** to openly tokenizable modules or sub modules  
+✅ **Earn rewards** from code improvements or just gameing  
+
+Plug into the **Open Composable Game-Building Economy** today!

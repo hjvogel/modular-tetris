@@ -4,8 +4,7 @@ import random
 from datetime import datetime
 import board
 
-# Will be injected by main
-agent = None
+agent = None  # Injected by main.py
 
 class GameState:
     def __init__(self):
@@ -16,59 +15,22 @@ class GameState:
         self.current_rotation = 0
         self.current_block_pos = [3, 0]
 
-    def set_state(self, state, details=None):
-        self.state = state
-        self.details = details or {}
-        return json.dumps({
-            "event": "state_change",
-            "source": "tetris-game-state",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "state": self.state,
-            "details": self.details
-        })
-
-    def game_start(self, initial_level=1, initial_score=0):
-        return self.set_state("game_start", {
-            "initial_level": initial_level,
-            "initial_score": initial_score
-        })
-
-    def pause_game(self):
-        return self.set_state("paused", {
-            "paused_at": datetime.utcnow().isoformat() + "Z"
-        })
-
-    def resume_game(self):
-        return self.set_state("resumed", {
-            "resumed_at": datetime.utcnow().isoformat() + "Z"
-        })
-
-    def game_over(self, reason, final_score, level_reached):
-        return self.set_state("game_over", {
-            "reason": reason,
-            "final_score": final_score,
-            "level_reached": level_reached
-        })
-
     def load_blocks(self, directory="./tetris-blocks-data/examples/"):
         self.blocks = []
         for fname in os.listdir(directory):
-            if fname.endswith("block.json"):
+            if fname.endswith(".json"):
                 with open(os.path.join(directory, fname)) as f:
                     self.blocks.append(json.load(f))
-        return self.blocks
 
     def start(self):
-        load_blocks()
+        self.load_blocks()
         board.board.clear_grid()
-        self.current_rotation = 0
         self.current_block = random.choice(self.blocks)
+        self.current_rotation = 0
         self.current_block_pos = [3, 0]
         self.place()
 
     def tick(self):
-        if not self.current_block:
-            return
         shape = self.get_shape()
         self.erase(shape, self.current_block_pos)
 
@@ -78,12 +40,9 @@ class GameState:
         else:
             self.place()
             cleared = board.board.clear_lines()
-            if cleared > 0 and agent:
-                agent.handle_command(json.dumps({
-                    "command": "update_score",
-                    "target_module": "tetris-scoring-rules",
-                    "parameters": {"lines": cleared}
-                }))
+            if cleared > 0:
+                print(f"[State] Clearing {cleared} lines")
+                self.update_score(cleared)
             self.current_block = random.choice(self.blocks)
             self.current_rotation = 0
             self.current_block_pos = [3, 0]
@@ -108,7 +67,10 @@ class GameState:
 
     def place(self):
         color_hex = self.current_block.get("color", "#FF00FF")
-        color = tuple(int(color_hex[i:i+2], 16) for i in (1, 3, 5)) if isinstance(color_hex, str) else (255, 0, 255)
+        if isinstance(color_hex, str) and color_hex.startswith("#"):
+            color = tuple(int(color_hex[i:i+2], 16) for i in (1, 3, 5))
+        else:
+            color = (255, 0, 255)
         board.board.place_piece(self.get_shape(), self.current_block_pos, color)
 
     def erase(self, shape, position):
@@ -123,35 +85,38 @@ class GameState:
     def get_shape(self):
         return self.current_block["rotations"][self.current_rotation % len(self.current_block["rotations"])]
 
+    def update_score(self, lines_cleared):
+        global agent
+        if agent:
+            response = agent.handle_command(json.dumps({
+                "command": "update_score",
+                "target_module": "scoring-rules",
+                "parameters": {"lines": lines_cleared}
+            }))
+            print(f"[State] Score update response: {response}")
+
 game_state = GameState()
 
 def handler(command, params):
     if command == "game_start":
-        return game_state.game_start(
-            initial_level=params.get("initial_level", 1),
-            initial_score=params.get("initial_score", 0)
-        )
-    elif command == "pause_game":
-        return game_state.pause_game()
-    elif command == "resume_game":
-        return game_state.resume_game()
-    elif command == "game_over":
-        return game_state.game_over(
-            reason=params.get("reason", "unknown"),
-            final_score=params.get("final_score", 0),
-            level_reached=params.get("level_reached", 0)
-        )
-    elif command == "get_state":
-        return json.dumps({
-            "state": game_state.state,
-            "details": game_state.details
-        })
+        game_state.start()
+        return json.dumps({"status": "game_started"})
+    elif command == "move":
+        game_state.move(params["direction"])
+        return json.dumps({"status": f"moved {params['direction']}"})
+    elif command == "rotate":
+        game_state.rotate()
+        return json.dumps({"status": "rotated"})
+    elif command == "tick":
+        game_state.tick()
+        return json.dumps({"status": "tick_complete"})
+    return json.dumps({"error": "Unknown state command", "received": command})
 
-    return json.dumps({
-        "error": "Unknown state command",
-        "received": command
-    })
+def inject_agent(plugin_agent):
+    global agent
+    agent = plugin_agent
 
+# Necessary standalone functions for main.py compatibility
 def load_blocks(directory="./tetris-blocks-data/examples/"):
     return game_state.load_blocks(directory)
 
@@ -166,7 +131,3 @@ def move(direction):
 
 def rotate():
     return game_state.rotate()
-
-def inject_agent(plugin_agent):
-    global agent
-    agent = plugin_agent

@@ -1,106 +1,63 @@
-import pygame
-import json
-import time
-import os
-
-# Load UI config
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "tetris-board-engine\\tetris_ui_config.json")
-with open(CONFIG_PATH) as f:
-    config = json.load(f)
-
-GAME_NAME = config.get("game_name", "Modular Tetris2")
-CELL_SIZE = config.get("cell_size", 30)
-GRID_WIDTH = config.get("grid_width", 10)
-GRID_HEIGHT = config.get("grid_height", 20)
-BUTTON_HEIGHT = config.get("button_height", 40)
-screen = pygame.display.set_mode((CELL_SIZE * GRID_WIDTH, CELL_SIZE * GRID_HEIGHT + 80))
+import pygame, json, time
 
 class UIHeadless:
     def __init__(self):
-        print("UIHeadless init")
         self.screen = None
         self.font = None
         self.buttons = []
         self.bus = None
+        self.config = {}
 
     def set_bus(self, bus):
         self.bus = bus
 
-    def initialize(self):
-        print("UIHeadless initialize")
-        self.screen = screen
-        self.font = pygame.font.SysFont("Arial", 20)
-        self.buttons = [
-            {"id": "start", "label": "Start", "pos": (10, GRID_HEIGHT * CELL_SIZE + 5)},
-            {"id": "pause", "label": "Pause", "pos": (110, GRID_HEIGHT * CELL_SIZE + 5)},
-            {"id": "quit", "label": "Quit", "pos": (210, GRID_HEIGHT * CELL_SIZE + 5)},
-        ]
+    def initialize(self, config):
+        print("[UI] Initializing UI from config")
+        self.config = config
+        ui_cfg = config["ui_config"]
+        pygame.display.set_caption(config["game_name"])
+        size = (ui_cfg["grid_width"]*ui_cfg["cell_size"],
+                ui_cfg["grid_height"]*ui_cfg["cell_size"]+ui_cfg["button_height"]+50)
+        self.screen = pygame.display.set_mode(size)
+        self.font = pygame.font.SysFont(ui_cfg["font"], ui_cfg["font_size"])
+        self.buttons = ui_cfg["buttons"]
         self.render_buttons()
-        pygame.display.set_caption(GAME_NAME)
 
     def render_board(self, board_state, score_state=None):
+        self.screen.fill(self.config["ui_config"]["bg_color"])
+        cell_size = self.config["ui_config"]["cell_size"]
         grid = board_state.get("grid", [])
-        if not self.screen:
-            print("[UI] Cannot render board, screen not initialized")
-            return
-
-        self.screen.fill((0, 0, 0))
 
         for y, row in enumerate(grid):
             for x, cell in enumerate(row):
-                if isinstance(cell, (tuple, list)) and len(cell) == 3:
-                    color = tuple(cell)
-                elif isinstance(cell, str) and cell.startswith("#") and len(cell) == 7:
-                    try:
-                        color = tuple(int(cell[i:i+2], 16) for i in (1, 3, 5))
-                    except:
-                        color = (255, 0, 255)
-                elif isinstance(cell, int) and cell != 0:
-                    color = (200, 200, 200)
-                else:
-                    continue  # empty cell
-
-                pygame.draw.rect(
-                    self.screen,
-                    color,
-                    pygame.Rect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-                )
-
+                if cell:
+                    color = cell if isinstance(cell, (tuple, list)) else self.config["ui_config"]["colors"]["default"]
+                    pygame.draw.rect(self.screen, color, (x*cell_size, y*cell_size, cell_size, cell_size))
         self.render_buttons()
         if score_state:
             self.render_score(score_state)
-
-        pygame.display.update()
-
-    def render_score(self, score_state):
-        if not self.font:
-            print("[UI] Font not initialized")
-            return
-        text = f"Score: {score_state.get('total_score', 0)}"
-        label = self.font.render(text, True, (255, 255, 255))
-        self.screen.blit(label, (10, GRID_HEIGHT * CELL_SIZE + BUTTON_HEIGHT + 5))
+        pygame.display.flip()
 
     def render_buttons(self):
         for btn in self.buttons:
-            rect = pygame.Rect(btn["pos"][0], btn["pos"][1], 80, BUTTON_HEIGHT)
-            pygame.draw.rect(self.screen, (80, 80, 200), rect)
-            text = self.font.render(btn["label"], True, (255, 255, 255))
-            text_rect = text.get_rect(center=rect.center)
-            self.screen.blit(text, text_rect)
+            rect = pygame.Rect(btn["pos"], (80, self.config["ui_config"]["button_height"]))
+            pygame.draw.rect(self.screen, (80,80,200), rect)
+            label = self.font.render(btn["label"],True,(255,255,255))
+            self.screen.blit(label,label.get_rect(center=rect.center))
+
+    def render_score(self, score_state):
+        label = self.font.render(f"{self.config['ui_config']['score_label']}: {score_state.get('total_score',0)}",True,(255,255,255))
+        y_pos = self.config["ui_config"]["grid_height"]*self.config["ui_config"]["cell_size"]+self.config["ui_config"]["button_height"]+10
+        self.screen.blit(label,(10,y_pos))
 
     def handle_click(self, pos):
         for btn in self.buttons:
-            rect = pygame.Rect(btn["pos"][0], btn["pos"][1], 80, BUTTON_HEIGHT)
+            rect = pygame.Rect(btn["pos"], (80,self.config["ui_config"]["button_height"]))
             if rect.collidepoint(pos):
                 print(f"[UI] Button clicked: {btn['id']}")
                 if self.bus:
-                    event = {
-                        "event": "button_press",
-                        "source": "ui_headless",
-                        "button_id": btn["id"],
-                        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-                    }
-                    self.bus.publish("button_press", "ui_headless", event)
+                    event = {"event":"button_press","source":"ui","button_id":btn["id"],"timestamp":time.time()}
+                    self.bus.publish("button_press","ui",event)
                 return btn["id"]
         return None
 
@@ -108,22 +65,9 @@ ui = UIHeadless()
 
 def handler(command, params):
     if command == "init_ui":
-        screen = params.get("screen")
-        ui.initialize(screen)
-        return json.dumps({"status": "ui_initialized"})
-
+        ui.initialize(params["config"])
+        return json.dumps({"status":"initialized"})
     elif command == "render_board":
-        board_state = params.get("board_state", {})
-        score_state = params.get("score_state", {})
-        ui.render_board(board_state, score_state)
-        return json.dumps({"status": "board_rendered"})
-
-    elif command == "score_update":
-        ui.render_score(params)
-        pygame.display.update()
-        return json.dumps({"status": "score_rendered"})
-
-    return json.dumps({
-        "error": "Unknown UI command",
-        "received": command
-    })
+        ui.render_board(params["board_state"],params.get("score_state"))
+        return json.dumps({"status":"rendered"})
+    return json.dumps({"error":"unknown command"})

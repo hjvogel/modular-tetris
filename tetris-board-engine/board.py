@@ -27,9 +27,8 @@ class TetrisBoard:
                 if cell:
                     gx, gy = px + x, py + y
                     if 0 <= gx < self.width and 0 <= gy < self.height:
-                        self.grid[gy][gx] = color  # <- stores color
+                        self.grid[gy][gx] = color
         return True
-
 
     def clear_lines(self):
         new_grid = [row for row in self.grid if any(cell == 0 for cell in row)]
@@ -43,11 +42,7 @@ class TetrisBoard:
         self.grid = [[0] * self.width for _ in range(self.height)]
 
     def get_board_state(self):
-        return {
-            "width": self.width,
-            "height": self.height,
-            "grid": self.grid
-        }
+        return {"width": self.width, "height": self.height, "grid": self.grid}
 
 board = TetrisBoard()
 
